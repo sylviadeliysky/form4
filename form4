@@ -1,0 +1,167 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Data.SqlClient;
+using System.Diagnostics;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+
+namespace signup
+{
+    public partial class Form4 : Form
+    {
+        public Form4()
+        {
+            InitializeComponent();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            label2.Visible = true;
+
+            using (SqlConnection sqlCon = new SqlConnection(@"Data Source=LAB109PC15\SQLEXPRESS; Initial Catalog=userInfo; Integrated Security=True;"))
+            {
+                sqlCon.Open(); // Open SQL connection
+
+                string query = "SELECT roomNum AS 'Room Number', peopleNum AS 'Number of People', roomPrice AS 'Room Quality' FROM roomz WHERE availability = 'Available'";
+                List<string> conditions = new List<string>();
+                Dictionary<string, object> parameters = new Dictionary<string, object>();
+
+                if (floorNum.SelectedItem != null)
+                {
+                    switch (floorNum.SelectedItem.ToString())
+                    {
+                        case " ":
+                            break;
+                        case "First":
+                            conditions.Add("roomNum BETWEEN '100' AND '111'");
+                            break;
+                        case "Second":
+                            conditions.Add("roomNum BETWEEN '200' AND '211'");
+                            break;
+                        case "Third":
+                            conditions.Add("roomNum BETWEEN '300' AND '311'");
+                            break;
+                        case "Fourth":
+                            conditions.Add("roomNum BETWEEN '400' AND '411'");
+                            break;
+                        case "Fifth":
+                            conditions.Add("roomNum BETWEEN '500' AND '511'");
+                            break;
+                    }
+                }
+
+                if (peopleNum.SelectedItem != null)
+                {
+                    if (peopleNum.SelectedItem.ToString() != " ")
+                    {
+                        conditions.Add("peopleNum = @peopleNum");
+                        parameters.Add("@peopleNum", peopleNum.SelectedItem); // Add parameter
+                    }
+                    else
+                    {
+                    }
+                }
+
+                if (roomPrice.SelectedItem != null)
+                {
+                    if (roomPrice.SelectedItem.ToString() != " ")
+                    {
+                        conditions.Add("roomPrice = @roomPrice");
+                        parameters.Add("@roomPrice", roomPrice.SelectedItem); // Add parameter
+                    }
+                    else
+                    {
+                    }
+
+                }
+
+                // Combine the conditions into the SQL query
+                if (conditions.Count > 0)
+                {
+                    query += " AND " + string.Join(" AND ", conditions);
+                }
+
+                // Debugging: Output the constructed SQL query to examine it
+                Debug.WriteLine("Constructed SQL Query: " + query);
+
+                SqlCommand cmd = new SqlCommand(query, sqlCon);
+
+                // Add parameters to the command
+                foreach (KeyValuePair<string, object> param in parameters)
+                {
+                    cmd.Parameters.AddWithValue(param.Key, param.Value);
+                }
+
+                using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+                {
+                    DataSet ds = new DataSet();
+                    adapter.Fill(ds);
+                    dataGridView1.DataSource = ds.Tables.Count > 0 ? ds.Tables[0] : null;
+                }
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count > 0)
+            {
+                DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
+                string roomNumber = selectedRow.Cells["Room Number"].Value.ToString();
+
+                using (SqlConnection sqlCon = new SqlConnection(@"Data Source=LAB109PC15\SQLEXPRESS; Initial Catalog=userInfo; Integrated Security=True;"))
+                {
+                    sqlCon.Open(); // Open SQL connection
+
+                    string updateQuery = "UPDATE roomz SET availability = 'Occupied' WHERE roomNum = @roomNum";
+
+                    SqlCommand cmd = new SqlCommand(updateQuery, sqlCon);
+                    cmd.Parameters.AddWithValue("@roomNum", roomNumber);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    if (rowsAffected > 0)
+                    {
+                        MessageBox.Show("Room booked successfully.");
+                        // Refresh the DataGridView if needed
+                        // You can reload the data or remove the occupied row from the DataGridView
+                    }
+                    else
+                    {
+                        MessageBox.Show("Failed to book. Try again.");
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("Please select a room.");
+            }
+        }
+
+        private void dataGridView1_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count > 0)
+            {
+                // Hide label2 if a row is selected
+                label2.Visible = false;
+
+                // Change button2 color to baby pink
+                button2.BackColor = Color.FromArgb(255, 218, 232);
+                button2.Enabled = true;
+            }
+            else
+            {
+                // Show label2 if no row is selected
+                label2.Visible = true;
+
+                // Reset button2 color and disable it
+                button2.BackColor = SystemColors.Control;
+                button2.Enabled = false;
+            }
+        }
+    }
+}
